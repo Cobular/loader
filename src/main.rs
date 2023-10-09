@@ -10,13 +10,18 @@ use tera::{from_value, to_value, Function, Result, Tera, Value};
 #[derive(Parser, Debug)]
 #[clap(author, about, version)]
 struct Cli {
-    /// The root directory to recursively search for markdown files
-    root_dir: std::path::PathBuf,
+    /// A bash string of a glob, should be single quoted to avoid premature splitting
+    files_glob: String,
     /// Custom flags to pass to pandoc
-    custom_pandoc_flags: Option<Vec<String>>,
+    #[clap(short, long)]
+    custom_pandoc_flags: Vec<String>,
     /// Output to PDF instead of stdout
     #[clap(short, long, default_value = "false")]
     output_pdf: bool, 
+    /// Search for import files relative to this directory
+    /// If not specified, will search relative to the current directory
+    #[clap(short, long)]
+    root_dir: Option<PathBuf>
 }
 
 fn convert_to_pdf(args: &Cli, content: &str) {
@@ -27,12 +32,10 @@ fn convert_to_pdf(args: &Cli, content: &str) {
         .arg("-o")
         .arg("output.pdf");
 
-    if let Some(flags) = &args.custom_pandoc_flags {
-        for flag in flags {
-            cmd_builder = cmd_builder.arg(flag);
-        }
+    for flag in &args.custom_pandoc_flags {
+        cmd_builder = cmd_builder.arg(flag);
     }
-
+    
     let mut child = cmd_builder
         .stdin(std::process::Stdio::piped())
         .spawn()
@@ -54,11 +57,13 @@ fn convert_to_pdf(args: &Cli, content: &str) {
     }
 }
 
+
+/// Get the depth of a path, i.e. the number of path components
 fn get_path_depth(path: &Path) -> usize {
     path.iter().count()
 }
 
-// Sort by path depth (shortest path first), then break by alphabetical order
+/// Sort by path depth (shortest path first), then break by alphabetical order
 fn sort_paths_by_depth(paths: &mut [PathBuf]) {
     paths.sort_by(|a, b| {
         let a_depth = get_path_depth(a);
@@ -71,8 +76,8 @@ fn sort_paths_by_depth(paths: &mut [PathBuf]) {
     });
 }
 
-// Given the name to a file, search recursively within a root directory using globs to find it.
-//  If there is only one file with that name inside that directory, return it. Otherwiwse, error.
+/// Given the name to a file, search recursively within a root directory using globs to find it.
+///  If there is only one file with that name inside that directory, return it. Otherwiwse, error.
 fn find_file_by_name(root_dir: &Path, file_name: &str) -> Result<PathBuf> {
     let mut found_files = Vec::new();
     for entry in glob::glob(root_dir.join("**").join(file_name).to_str().unwrap()).unwrap() {
@@ -87,8 +92,9 @@ fn find_file_by_name(root_dir: &Path, file_name: &str) -> Result<PathBuf> {
     }
 }
 
-fn embed_file(root_dir: &Path) -> impl Function {
-    let root_dir = root_dir.to_owned();
+
+/// A Tera function that embeds the contents of a file into the template
+fn embed_file(root_dir: PathBuf) -> impl Function {
     Box::new(move |args: &HashMap<String, Value>| -> Result<Value> {
         match args.get("path") {
             Some(val) => match from_value::<String>(val.clone()) {
@@ -108,9 +114,16 @@ fn main() {
     let args = Cli::parse();
 
     let mut tera = Tera::default();
-    tera.register_function("embed_file", embed_file(&args.root_dir));
 
-    let mut file_names: Vec<_> = glob::glob(args.root_dir.join("**/*.md").to_str().unwrap())
+    let ref_dir = if let Some(root_dir) = &args.root_dir {
+        root_dir.to_owned()
+    } else {
+        std::env::current_dir().unwrap()
+    };
+
+    tera.register_function("embed_file", embed_file(ref_dir));
+
+    let mut file_names: Vec<_> = glob::glob(&args.files_glob)
         .unwrap()
         .map(|file| {
             let path = file.unwrap();

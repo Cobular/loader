@@ -4,6 +4,9 @@ version = "0.1.0"
 edition = "2021"
 authors = ["Julie Cobular"]
 description = "A tool to include any file in markdown files"
+license = "MIT"
+homepage = "https://github.com/cobular/md-include"
+repository = "https://github.com/cobular/md-include"
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
