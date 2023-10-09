@@ -7,6 +7,8 @@ description = "A tool to include any file in markdown files"
 license = "MIT"
 homepage = "https://github.com/cobular/md-include"
 repository = "https://github.com/cobular/md-include"
+keywords = ["markdown", "include", "file"]
+categories = ["text-processing", "command-line-utilities", "development-tools", "text-processing"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
