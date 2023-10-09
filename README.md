@@ -9,14 +9,20 @@ $ ls
 file.md
 
 $ cat file.md
+some stuff
+more stuff
 
+{{ embed_file(path="<FILE_NAME>") }}
 
-$ md-include .
-<file-contents>
+last_stuff
 
-<included file from FILE_NAME>
+$ md-include file.md
+some stuff
+more stuff
 
-<other-file-contents>
+CONTENTS FROM THAT FILE
+
+last_stuff
 ```
 
 ## Installing
@@ -39,3 +45,9 @@ Options:
   -h, --help        Print help
   -V, --version     Print version
 ```
+
+If you pass a glob instead of a single file, this tool will parse and embed all `embed_file`s, then concat them all seperated by `\n\n * * * \n\n` (a Markdown <hr>)
+
+The sort order is based on depth of paths, with ties broken by alphabetical order.
+
+You can also use `-o` and this will call pandoc to convert markdown to pdf.
